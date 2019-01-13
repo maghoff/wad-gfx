@@ -20,6 +20,10 @@ struct Opt {
     /// Which colormap to use (0-33)
     #[structopt(short = "c", long = "colormap", default_value = "0")]
     colormap: usize,
+
+    /// Scale with beautiful nearest neighbor filtering
+    #[structopt(short = "s", long = "scale", default_value = "2")]
+    scale: usize,
 }
 
 trait WadExt {
@@ -76,15 +80,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let gfx = ndarray::ArrayView2::from_shape((64, 64).strides((1, 64)), gfx)?;
 
-    let gfx = gfx.into_iter()
+    let mut scaled: ndarray::Array2<u8> = ndarray::Array2::zeros((gfx.dim().0 * opt.scale, gfx.dim().1 * opt.scale));
+
+    for y in 0..scaled.dim().0 {
+        for x in 0..scaled.dim().1 {
+            scaled[[x, y]] = gfx[[x/opt.scale, y/opt.scale]];
+        }
+    }
+
+    let gfx = scaled.iter()
         .map(|x| colormap[*x as usize])
         .collect::<Vec<_>>();
 
     write_png(
         format!("{}.png", opt.flat.to_ascii_lowercase()),
         palette,
-        64,
-        64,
+        scaled.dim().0 as u32,
+        scaled.dim().1 as u32,
         &gfx
     )?;
 
