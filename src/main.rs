@@ -1,5 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use ndarray::prelude::*;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -12,11 +13,11 @@ struct Opt {
     /// Flat to extract
     flat: String,
 
-    /// Which palette to use
+    /// Which palette to use (0-13)
     #[structopt(short = "p", long = "palette", default_value = "0")]
     palette: usize,
 
-    /// Which colormap to use
+    /// Which colormap to use (0-33)
     #[structopt(short = "c", long = "colormap", default_value = "0")]
     colormap: usize,
 }
@@ -33,6 +34,31 @@ impl WadExt for wad::Wad {
     }
 }
 
+fn write_png(
+    filename: impl AsRef<Path>,
+    palette: &[u8],
+    width: u32,
+    height: u32,
+    gfx: &[u8]
+) ->
+    Result<(), Box<dyn std::error::Error>>
+{
+    use std::fs::File;
+    use std::io::BufWriter;
+    use png::HasParameters;
+
+    let file = File::create(filename)?;
+    let ref mut w = BufWriter::new(file);
+
+    let mut encoder = png::Encoder::new(w, width, height);
+    encoder.set(png::ColorType::Indexed);
+    let mut writer = encoder.write_header()?;
+    writer.write_chunk(*b"PLTE", palette)?;
+    writer.write_image_data(gfx)?;
+
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
@@ -46,29 +72,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let colormap_index = opt.colormap.checked_mul(256).ok_or("Overflow")?;
     let colormap = &colormaps[colormap_index..colormap_index+256];
 
-    let raw_gfx = wad.lump_by_name(&opt.flat).ok_or_else(|| format!("Cannot find {}", opt.flat))?;
+    let gfx = wad.lump_by_name(&opt.flat).ok_or_else(|| format!("Cannot find {}", opt.flat))?;
 
-    // GFX is stored in column-major order. Transpose:
-    let mut gfx = [0u8; 64*64];
-    for x in 0..64 {
-        for y in 0..64 {
-            gfx[x + y*64] = raw_gfx[x*64 + y];
-        }
-    }
+    let gfx = ndarray::ArrayView2::from_shape((64, 64).strides((1, 64)), gfx)?;
 
-    // For reading and opening files
-    use std::fs::File;
-    use std::io::BufWriter;
-    use png::HasParameters;
+    let gfx = gfx.into_iter()
+        .map(|x| colormap[*x as usize])
+        .collect::<Vec<_>>();
 
-    let file = File::create(format!("{}.png", opt.flat.to_ascii_lowercase()))?;
-    let ref mut w = BufWriter::new(file);
-
-    let mut encoder = png::Encoder::new(w, 64, 64);
-    encoder.set(png::ColorType::Indexed);
-    let mut writer = encoder.write_header()?;
-    writer.write_chunk(*b"PLTE", palette)?;
-    writer.write_image_data(&gfx.iter().map(|x| colormap[*x as usize]).collect::<Vec<_>>())?;
+    write_png(
+        format!("{}.png", opt.flat.to_ascii_lowercase()),
+        palette,
+        64,
+        64,
+        &gfx
+    )?;
 
     Ok(())
 }
