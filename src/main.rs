@@ -78,9 +78,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let gfx = wad.lump_by_name(&opt.flat).ok_or_else(|| format!("Cannot find {}", opt.flat))?;
 
-    let gfx = ndarray::ArrayView2::from_shape((64, 64).strides((1, 64)), gfx)?;
+    let gfx = ArrayView2::from_shape((64, 64), gfx)?;
 
-    let mut scaled: ndarray::Array2<u8> = ndarray::Array2::zeros((gfx.dim().0 * opt.scale, gfx.dim().1 * opt.scale));
+    let mut scaled: Array2<u8> = Array2::zeros((gfx.dim().0 * opt.scale, gfx.dim().1 * opt.scale));
 
     for y in 0..scaled.dim().0 {
         for x in 0..scaled.dim().1 {
