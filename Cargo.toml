@@ -1,8 +1,10 @@
 [package]
 name = "doom-gfx"
+description = "Extract graphics assets from doom.wad"
 version = "0.1.0"
 authors = ["Magnus Hovland Hoff <maghoff@gmail.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 wad = "0.2.0"
