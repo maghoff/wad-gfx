@@ -56,6 +56,7 @@ fn write_png(
 
     let mut encoder = png::Encoder::new(w, width, height);
     encoder.set(png::ColorType::Indexed);
+    encoder.set(png::Compression::Best);
     let mut writer = encoder.write_header()?;
     writer.write_chunk(*b"PLTE", palette)?;
     writer.write_image_data(gfx)?;

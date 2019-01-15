@@ -56,7 +56,7 @@ dependencies = [
 
 [[package]]
 name = "doom-gfx"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ndarray 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "png 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
