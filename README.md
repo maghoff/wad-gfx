@@ -1,13 +1,13 @@
 Extract graphics assets from doom.wad. At this point only flats are supported.
 
-`doom-gfx` takes two positional arguments. First, the path to `doom.wad`,
+`wad-gfx` takes two positional arguments. First, the path to `doom.wad`,
 second the name of a flat to extract. A command line invocation may look like
 this:
 
-    doom-gfx doom.wad FLOOR5_1
+    wad-gfx doom.wad FLOOR5_1
 
 The output filename is implicitly generated from the flat name by converting
-it to lower case and appending `.png`. For this example, `doom-gfx` would
+it to lower case and appending `.png`. For this example, `wad-gfx` would
 write the image to a file named `floor5_1.png`. The flat name is case
 sensitive. To see the list of all flats available, use [`wad-ls`] and look for
 all entries listed between `F_START` and `F_END`.
@@ -31,22 +31,22 @@ Try it out
 ----------
 Install via Rust toolchain:
 
-    cargo install doom-gfx
+    cargo install wad-gfx
 
 Run:
 
-    doom-gfx doom.wad FLOOR5_1
+    wad-gfx doom.wad FLOOR5_1
     display floor5_1.png
 
 Command line options
 --------------------
 
-    doom-gfx 0.1.0
+    wad-gfx 0.1.0
     Magnus Hovland Hoff <maghoff@gmail.com>
     Extract graphics from Doom WAD files
 
     USAGE:
-        doom-gfx [OPTIONS] <input> <flat>
+        wad-gfx [OPTIONS] <input> <flat>
 
     FLAGS:
         -h, --help       Prints help information

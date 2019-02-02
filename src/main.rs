@@ -4,7 +4,7 @@ use ndarray::prelude::*;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "doom-gfx", about = "Extract graphics from Doom WAD files")]
+#[structopt(name = "wad-gfx", about = "Extract graphics from Doom WAD files")]
 struct Opt {
     /// Input WAD file
     #[structopt(parse(from_os_str))]
