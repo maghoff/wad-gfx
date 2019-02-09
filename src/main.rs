@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use ndarray::prelude::*;
 use structopt::StructOpt;
+use wad::EntryId;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "wad-gfx", about = "Extract graphics from Doom WAD files")]
@@ -24,18 +25,6 @@ struct Opt {
     /// Scale with beautiful nearest neighbor filtering
     #[structopt(short = "s", long = "scale", default_value = "2")]
     scale: usize,
-}
-
-trait WadExt {
-    fn lump_by_name<'a>(&'a self, name: &str) -> Option<&'a [u8]>;
-}
-
-impl WadExt for wad::Wad {
-    fn lump_by_name<'a>(&'a self, name: &str) -> Option<&'a [u8]> {
-        self.iter()
-            .find(|(lump_name, _)| *lump_name == name)
-            .map(|x| x.1)
-    }
 }
 
 fn write_png(
@@ -69,15 +58,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let wad = wad::load_wad_file(&opt.input)?;
 
-    let palettes = wad.lump_by_name("PLAYPAL").ok_or("Missing PLAYPAL")?;
+    let palettes = wad.by_id(b"PLAYPAL").ok_or("Missing PLAYPAL")?;
     let palette_index = opt.palette.checked_mul(768).ok_or("Overflow")?;
     let palette = &palettes[palette_index..palette_index+768];
 
-    let colormaps = wad.lump_by_name("COLORMAP").ok_or("Missing COLORMAP")?;
+    let colormaps = wad.by_id(b"COLORMAP").ok_or("Missing COLORMAP")?;
     let colormap_index = opt.colormap.checked_mul(256).ok_or("Overflow")?;
     let colormap = &colormaps[colormap_index..colormap_index+256];
 
-    let gfx = wad.lump_by_name(&opt.flat).ok_or_else(|| format!("Cannot find {}", opt.flat))?;
+    let flat_id = EntryId::from_str(&opt.flat).ok_or_else(|| format!("Invalid ID: {:?}", opt.flat))?;
+    let gfx = wad.by_id(flat_id).ok_or_else(|| format!("Cannot find {}", opt.flat))?;
 
     let gfx = ArrayView2::from_shape((64, 64), gfx)?;
 
