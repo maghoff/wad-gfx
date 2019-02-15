@@ -32,13 +32,11 @@ fn write_png(
     palette: &[u8],
     width: u32,
     height: u32,
-    gfx: &[u8]
-) ->
-    Result<(), Box<dyn std::error::Error>>
-{
+    gfx: &[u8],
+) -> Result<(), Box<dyn std::error::Error>> {
+    use png::HasParameters;
     use std::fs::File;
     use std::io::BufWriter;
-    use png::HasParameters;
 
     let file = File::create(filename)?;
     let ref mut w = BufWriter::new(file);
@@ -60,14 +58,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let palettes = wad.by_id(b"PLAYPAL").ok_or("Missing PLAYPAL")?;
     let palette_index = opt.palette.checked_mul(768).ok_or("Overflow")?;
-    let palette = &palettes[palette_index..palette_index+768];
+    let palette = &palettes[palette_index..palette_index + 768];
 
     let colormaps = wad.by_id(b"COLORMAP").ok_or("Missing COLORMAP")?;
     let colormap_index = opt.colormap.checked_mul(256).ok_or("Overflow")?;
-    let colormap = &colormaps[colormap_index..colormap_index+256];
+    let colormap = &colormaps[colormap_index..colormap_index + 256];
 
-    let flat_id = EntryId::from_str(&opt.flat).ok_or_else(|| format!("Invalid ID: {:?}", opt.flat))?;
-    let gfx = wad.by_id(flat_id).ok_or_else(|| format!("Cannot find {}", opt.flat))?;
+    let flat_id =
+        EntryId::from_str(&opt.flat).ok_or_else(|| format!("Invalid ID: {:?}", opt.flat))?;
+    let gfx = wad
+        .by_id(flat_id)
+        .ok_or_else(|| format!("Cannot find {}", opt.flat))?;
 
     let gfx = ArrayView2::from_shape((64, 64), gfx)?;
 
@@ -75,11 +76,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for y in 0..scaled.dim().0 {
         for x in 0..scaled.dim().1 {
-            scaled[[x, y]] = gfx[[x/opt.scale, y/opt.scale]];
+            scaled[[x, y]] = gfx[[x / opt.scale, y / opt.scale]];
         }
     }
 
-    let gfx = scaled.iter()
+    let gfx = scaled
+        .iter()
         .map(|x| colormap[*x as usize])
         .collect::<Vec<_>>();
 
@@ -88,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         palette,
         scaled.dim().0 as u32,
         scaled.dim().1 as u32,
-        &gfx
+        &gfx,
     )?;
 
     Ok(())
