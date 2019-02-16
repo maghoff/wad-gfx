@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for y in 0..scaled.dim().0 {
         for x in 0..scaled.dim().1 {
-            scaled[[x, y]] = gfx[[x / opt.scale, y / opt.scale]];
+            scaled[[y, x]] = gfx[[y / opt.scale, x / opt.scale]];
         }
     }
 
@@ -88,8 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     write_png(
         format!("{}.png", opt.flat.to_ascii_lowercase()),
         palette,
-        scaled.dim().0 as u32,
         scaled.dim().1 as u32,
+        scaled.dim().0 as u32,
         &gfx,
     )?;
 
