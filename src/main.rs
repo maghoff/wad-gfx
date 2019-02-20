@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use ndarray::prelude::*;
+use ndarray::{s, ShapeError};
+use num_rational::Rational32;
 use structopt::StructOpt;
 use wad::EntryId;
 
@@ -30,25 +32,90 @@ struct Opt {
 fn write_png(
     filename: impl AsRef<Path>,
     palette: &[u8],
-    width: u32,
-    height: u32,
-    gfx: &[u8],
+    gfx: ArrayView2<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use png::HasParameters;
     use std::fs::File;
     use std::io::BufWriter;
 
+    assert!(gfx.dim().0 <= i32::max_value() as usize);
+    assert!(gfx.dim().1 <= i32::max_value() as usize);
+    assert_eq!(gfx.stride_of(Axis(1)), 1);
+    assert_eq!(gfx.stride_of(Axis(0)), gfx.dim().1 as isize);
+
     let file = File::create(filename)?;
     let ref mut w = BufWriter::new(file);
 
-    let mut encoder = png::Encoder::new(w, width, height);
+    let mut encoder = png::Encoder::new(w, gfx.dim().1 as u32, gfx.dim().0 as u32);
     encoder.set(png::ColorType::Indexed);
     encoder.set(png::Compression::Best);
     let mut writer = encoder.write_header()?;
     writer.write_chunk(*b"PLTE", palette)?;
-    writer.write_image_data(gfx)?;
+    writer.write_image_data(gfx.into_slice().unwrap())?;
 
     Ok(())
+}
+
+trait Gfx {
+    fn pixel_aspect_ratio(&self) -> Rational32;
+
+    fn dim(&self) -> (u32, u32);
+
+    fn draw_column(&self, col: u32, target: ArrayViewMut1<u8>, scale: Rational32);
+}
+
+struct Flat<'a> {
+    pixels: ArrayView2<'a, u8>,
+}
+
+impl<'a> Flat<'a> {
+    fn new<'n>(pixels: &'n [u8]) -> Result<Flat<'n>, ShapeError> {
+        Ok(Flat {
+            pixels: ArrayView2::from_shape((64, 64), pixels)?,
+        })
+    }
+}
+
+impl<'a> Gfx for Flat<'a> {
+    fn pixel_aspect_ratio(&self) -> Rational32 {
+        Rational32::new(1, 1)
+    }
+
+    fn dim(&self) -> (u32, u32) {
+        (64, 64)
+    }
+
+    fn draw_column(&self, col: u32, mut target: ArrayViewMut1<u8>, scale: Rational32) {
+        let scaled_height = Rational32::from(self.pixels.dim().0 as i32) * scale;
+        let scaled_height = scaled_height.to_integer();
+
+        for y in 0..scaled_height {
+            let scaled_y = Rational32::from(y) / scale;
+            let scaled_y = scaled_y.to_integer() as usize;
+
+            target[[y as usize]] = self.pixels[[scaled_y, col as usize]];
+        }
+    }
+}
+
+fn paint_gfx(gfx: impl Gfx, scale: usize) -> Array2<u8> {
+    let pixel_aspect_ratio = gfx.pixel_aspect_ratio();
+
+    let mut target: Array2<u8> = Array2::zeros((
+        (Rational32::from((gfx.dim().0 as usize * scale) as i32) * pixel_aspect_ratio).to_integer()
+            as usize,
+        gfx.dim().1 as usize * scale,
+    ));
+
+    for x in 0..target.dim().1 {
+        gfx.draw_column(
+            (x / scale) as u32,
+            target.slice_mut(s![.., x]),
+            pixel_aspect_ratio * Rational32::from(scale as i32),
+        );
+    }
+
+    target
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -70,27 +137,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .by_id(flat_id)
         .ok_or_else(|| format!("Cannot find {}", opt.flat))?;
 
-    let gfx = ArrayView2::from_shape((64, 64), gfx)?;
+    let flat = Flat::new(gfx)?;
 
-    let mut scaled: Array2<u8> = Array2::zeros((gfx.dim().0 * opt.scale, gfx.dim().1 * opt.scale));
+    let mut target = paint_gfx(flat, opt.scale);
 
-    for y in 0..scaled.dim().0 {
-        for x in 0..scaled.dim().1 {
-            scaled[[y, x]] = gfx[[y / opt.scale, x / opt.scale]];
-        }
-    }
+    // When painting sprites with transparency, the way to do it might be
+    // to paint in 32 bit RGBA color space.  In that case, colormapping
+    // must come earlier. Maybe paint_gfx could take some painter parameter
+    // which could transparently apply a colormap?
+    target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
 
-    let gfx = scaled
-        .iter()
-        .map(|x| colormap[*x as usize])
-        .collect::<Vec<_>>();
-
+    // PNG can store the pixel aspect ratio in the pHYs chunk. So, I can
+    // envision two modes: correcting the pixel aspect ratio by scaling
+    // during rendering or storing anamorphic pixels, but specifying the
+    // correct pixel aspect ratio in the PNG. I don't know of any software
+    // that supports this, but Adobe Photoshop might.
     write_png(
         format!("{}.png", opt.flat.to_ascii_lowercase()),
         palette,
-        scaled.dim().1 as u32,
-        scaled.dim().0 as u32,
-        &gfx,
+        target.view(),
     )?;
 
     Ok(())
