@@ -35,7 +35,7 @@ Install via Rust toolchain:
 
 Run:
 
-    wad-gfx doom.wad FLOOR5_1
+    wad-gfx doom.wad floor5_1
     display floor5_1.png
 
 Command line options
