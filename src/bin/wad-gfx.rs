@@ -9,13 +9,44 @@ use structopt::StructOpt;
 use wad::EntryId;
 use wad_gfx::*;
 
+fn parse_dim(src: &str) -> Result<(u32, u32), &'static str> {
+    const FORMAT_ERROR: &str =
+        "format must be two integers separated by `x` or `,`, eg 320x200 or 100,200";
+
+    let mut split = src
+        .splitn(2, |x| x == 'x' || x == ',')
+        .map(|x| x.parse().map_err(|_| FORMAT_ERROR));
+
+    let x = split
+        .next()
+        .expect("splitn() yields at least one element")?;
+    let y = split.next().unwrap_or(Err(FORMAT_ERROR))?;
+
+    Ok((y, x))
+}
+
 #[derive(Debug, StructOpt)]
 enum Graphics {
+    /// Extract a flat
     #[structopt(name = "flat")]
-    Flat { name: String },
+    Flat,
 
+    /// Extract a sprite
     #[structopt(name = "sprite")]
-    Sprite { name: String },
+    Sprite {
+        /// Canvas size for the output
+        #[structopt(long = "canvas", parse(try_from_str = "parse_dim"))]
+        canvas_size: Option<(u32, u32)>,
+
+        /// Place the sprite's hotspot at these coordinates
+        #[structopt(long = "pos", parse(try_from_str = "parse_dim"))]
+        pos: Option<(u32, u32)>,
+
+        /// Print information about the sprite to stdout instead of
+        /// generating an output image
+        #[structopt(short = "I", long = "info")]
+        info: bool,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -25,7 +56,9 @@ struct Opt {
     #[structopt(parse(from_os_str))]
     input: PathBuf,
 
-    /// Graphics to extract
+    /// The lump name of the graphic to extract
+    name: String,
+
     #[structopt(subcommand)]
     gfx: Graphics,
 
@@ -89,6 +122,66 @@ fn paint_gfx(gfx: &dyn Gfx, scale: usize) -> Array2<u8> {
     target
 }
 
+fn flat_cmd(
+    palette: &[u8],
+    colormap: &[u8],
+    gfx: &[u8],
+    scale: usize,
+    output: impl AsRef<Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let flat = Flat::new(gfx)?;
+
+    let mut target = paint_gfx(&flat, scale);
+
+    target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
+
+    write_png(output, palette, target.view())?;
+
+    Ok(())
+}
+
+fn sprite_cmd(
+    palette: &[u8],
+    colormap: &[u8],
+    gfx: &[u8],
+    info: bool,
+    _canvas_size: Option<(u32, u32)>,
+    _pos: Option<(u32, u32)>,
+    scale: usize,
+    output: impl AsRef<Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let sprite = Sprite::new(gfx);
+
+    if info {
+        print!(
+            "Dimensions: {}x{}\nOrigin: {},{}\nSize (b): {}\n",
+            sprite.dim().1,
+            sprite.dim().0,
+            sprite.origin().1,
+            sprite.origin().0,
+            gfx.len(),
+        );
+        return Ok(());
+    }
+
+    let mut target = paint_gfx(&sprite, scale);
+
+    // When painting sprites with transparency, the way to do it might be
+    // to paint in 32 bit RGBA color space.  In that case, colormapping
+    // must come earlier. Maybe paint_gfx could take some painter parameter
+    // which could transparently apply a colormap?
+    target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
+
+    // PNG can store the pixel aspect ratio in the pHYs chunk. So, I can
+    // envision two modes: correcting the pixel aspect ratio by scaling
+    // during rendering or storing anamorphic pixels, but specifying the
+    // correct pixel aspect ratio in the PNG. I don't know of any software
+    // that supports this, but Adobe Photoshop might.
+    write_png(output, palette, target.view())?;
+
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
@@ -102,46 +195,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let colormap_index = opt.colormap.checked_mul(256).ok_or("Overflow")?;
     let colormap = &colormaps[colormap_index..colormap_index + 256];
 
-    let (name, gfx): (String, Box<Gfx>) = match opt.gfx {
-        Graphics::Flat { name } => {
-            let flat_id =
-                EntryId::from_str(&name).ok_or_else(|| format!("Invalid ID: {:?}", name))?;
-            let gfx = wad
-                .by_id(flat_id)
-                .ok_or_else(|| format!("Cannot find {}", name))?;
+    let gfx_id =
+        EntryId::from_str(&opt.name).ok_or_else(|| format!("Invalid ID: {:?}", opt.name))?;
+    let gfx = wad
+        .by_id(gfx_id)
+        .ok_or_else(|| format!("Cannot find {}", opt.name))?;
 
-            (name, Box::new(Flat::new(gfx)?) as _)
-        }
-        Graphics::Sprite { name } => {
-            let sprite_id =
-                EntryId::from_str(&name).ok_or_else(|| format!("Invalid ID: {:?}", name))?;
-            let gfx = wad
-                .by_id(sprite_id)
-                .ok_or_else(|| format!("Cannot find {}", name))?;
+    let output = format!("{}.png", opt.name.to_ascii_lowercase());
 
-            (name, Box::new(Sprite::new(gfx)) as _)
-        }
-    };
-
-    let r: &dyn Gfx = &*gfx;
-    let mut target = paint_gfx(r, opt.scale);
-
-    // When painting sprites with transparency, the way to do it might be
-    // to paint in 32 bit RGBA color space.  In that case, colormapping
-    // must come earlier. Maybe paint_gfx could take some painter parameter
-    // which could transparently apply a colormap?
-    target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
-
-    // PNG can store the pixel aspect ratio in the pHYs chunk. So, I can
-    // envision two modes: correcting the pixel aspect ratio by scaling
-    // during rendering or storing anamorphic pixels, but specifying the
-    // correct pixel aspect ratio in the PNG. I don't know of any software
-    // that supports this, but Adobe Photoshop might.
-    write_png(
-        format!("{}.png", name.to_ascii_lowercase()),
-        palette,
-        target.view(),
-    )?;
-
-    Ok(())
+    match opt.gfx {
+        Graphics::Flat => flat_cmd(palette, colormap, gfx, opt.scale, output),
+        Graphics::Sprite {
+            canvas_size,
+            pos,
+            info,
+        } => sprite_cmd(
+            palette,
+            colormap,
+            gfx,
+            info,
+            canvas_size,
+            pos,
+            opt.scale,
+            output,
+        ),
+    }
 }
