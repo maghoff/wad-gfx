@@ -99,18 +99,16 @@ impl<'a> Sprite<'a> {
     pub fn origin(&self) -> (i16, i16) {
         (self.top, self.left)
     }
-}
 
-impl<'a> crate::Gfx for Sprite<'a> {
-    fn pixel_aspect_ratio(&self) -> Rational32 {
+    pub fn pixel_aspect_ratio(&self) -> Rational32 {
         Rational32::new(320, 200) / Rational32::new(4, 3)
     }
 
-    fn dim(&self) -> (u32, u32) {
+    pub fn dim(&self) -> (u32, u32) {
         (self.height as _, self.width as _)
     }
 
-    fn draw_column(&self, col: u32, mut target: ArrayViewMut1<u8>, scale: Rational32) {
+    pub fn draw_column(&self, col: u32, mut target: ArrayViewMut1<u8>, scale: Rational32) {
         for span in self.col(col) {
             let top = (Rational32::from(span.top as i32) * scale)
                 .ceil()
@@ -131,7 +129,6 @@ impl<'a> crate::Gfx for Sprite<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Gfx;
 
     #[test]
     fn dimensions() {

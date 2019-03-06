@@ -102,21 +102,18 @@ fn write_png(
     Ok(())
 }
 
-fn paint_gfx(gfx: &dyn Gfx, scale: usize) -> Array2<u8> {
-    let pixel_aspect_ratio = gfx.pixel_aspect_ratio();
-
+fn do_scale(input: ArrayView2<u8>, sx: u32, sy: Rational32) -> Array2<u8> {
     let mut target: Array2<u8> = Array2::zeros((
-        (Rational32::from((gfx.dim().0 as usize * scale) as i32) * pixel_aspect_ratio).to_integer()
-            as usize,
-        gfx.dim().1 as usize * scale,
+        (Rational32::from(input.dim().0 as i32) * sy).to_integer() as usize,
+        (input.dim().1 as u32 * sx) as usize,
     ));
 
-    for x in 0..target.dim().1 {
-        gfx.draw_column(
-            (x / scale) as u32,
-            target.slice_mut(s![.., x]),
-            pixel_aspect_ratio * Rational32::from(scale as i32),
-        );
+    for y in 0..target.dim().0 {
+        let src_y = (Rational32::from(y as i32) / sy).to_integer();
+        for x in 0..target.dim().1 {
+            let src_x = x as u32 / sx;
+            target[(y, x)] = input[(src_y as usize, src_x as usize)];
+        }
     }
 
     target
@@ -129,15 +126,41 @@ fn flat_cmd(
     scale: usize,
     output: impl AsRef<Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let flat = Flat::new(gfx)?;
+    let gfx = Flat::new(&gfx)?;
+    let mut mapped = [0u8; 64 * 64];
 
-    let mut target = paint_gfx(&flat, scale);
+    mapped
+        .iter_mut()
+        .zip(gfx.view().iter())
+        .for_each(|(m, g)| *m = colormap[*g as usize]);
 
-    target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
+    let flat = Flat::new(&mapped)?;
 
-    write_png(output, palette, target.view())?;
+    let scaled = do_scale(flat.view(), scale as u32, Rational32::from(scale as i32));
+
+    write_png(output, palette, scaled.view())?;
 
     Ok(())
+}
+
+fn paint_sprite(sprite: &Sprite, scale: usize) -> Array2<u8> {
+    let pixel_aspect_ratio = sprite.pixel_aspect_ratio();
+
+    let mut target: Array2<u8> = Array2::zeros((
+        (Rational32::from((sprite.dim().0 as usize * scale) as i32) * pixel_aspect_ratio)
+            .to_integer() as usize,
+        sprite.dim().1 as usize * scale,
+    ));
+
+    for x in 0..target.dim().1 {
+        sprite.draw_column(
+            (x / scale) as u32,
+            target.slice_mut(s![.., x]),
+            pixel_aspect_ratio * Rational32::from(scale as i32),
+        );
+    }
+
+    target
 }
 
 fn sprite_cmd(
@@ -164,7 +187,7 @@ fn sprite_cmd(
         return Ok(());
     }
 
-    let mut target = paint_gfx(&sprite, scale);
+    let mut target = paint_sprite(&sprite, scale);
 
     // When painting sprites with transparency, the way to do it might be
     // to paint in 32 bit RGBA color space.  In that case, colormapping
