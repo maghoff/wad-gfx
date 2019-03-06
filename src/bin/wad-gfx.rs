@@ -3,7 +3,6 @@ extern crate wad_gfx;
 use std::path::{Path, PathBuf};
 
 use ndarray::prelude::*;
-use ndarray::s;
 use num_rational::Rational32;
 use structopt::StructOpt;
 use wad::EntryId;
@@ -143,26 +142,6 @@ fn flat_cmd(
     Ok(())
 }
 
-fn paint_sprite(sprite: &Sprite, scale: usize) -> Array2<u8> {
-    let pixel_aspect_ratio = sprite.pixel_aspect_ratio();
-
-    let mut target: Array2<u8> = Array2::zeros((
-        (Rational32::from((sprite.dim().0 as usize * scale) as i32) * pixel_aspect_ratio)
-            .to_integer() as usize,
-        sprite.dim().1 as usize * scale,
-    ));
-
-    for x in 0..target.dim().1 {
-        sprite.draw_column(
-            (x / scale) as u32,
-            target.slice_mut(s![.., x]),
-            pixel_aspect_ratio * Rational32::from(scale as i32),
-        );
-    }
-
-    target
-}
-
 fn sprite_cmd(
     palette: &[u8],
     colormap: &[u8],
@@ -187,7 +166,17 @@ fn sprite_cmd(
         return Ok(());
     }
 
-    let mut target = paint_sprite(&sprite, scale);
+    let pixel_aspect_ratio = Rational32::new(320, 200) / Rational32::new(4, 3);
+
+    let mut target: Array2<u8> = Array2::zeros(sprite.dim());
+
+    for x in 0..sprite.dim().1 {
+        for span in sprite.col(x as _) {
+            for y in 0..span.pixels.len() {
+                target[[y as usize + span.top as usize, x as usize]] = span.pixels[y as usize];
+            }
+        }
+    }
 
     // When painting sprites with transparency, the way to do it might be
     // to paint in 32 bit RGBA color space.  In that case, colormapping
@@ -195,12 +184,18 @@ fn sprite_cmd(
     // which could transparently apply a colormap?
     target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
 
+    let scaled = do_scale(
+        target.view(),
+        scale as u32,
+        Rational32::from(scale as i32) * pixel_aspect_ratio,
+    );
+
     // PNG can store the pixel aspect ratio in the pHYs chunk. So, I can
     // envision two modes: correcting the pixel aspect ratio by scaling
     // during rendering or storing anamorphic pixels, but specifying the
     // correct pixel aspect ratio in the PNG. I don't know of any software
     // that supports this, but Adobe Photoshop might.
-    write_png(output, palette, target.view())?;
+    write_png(output, palette, scaled.view())?;
 
     Ok(())
 }

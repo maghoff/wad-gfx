@@ -100,29 +100,8 @@ impl<'a> Sprite<'a> {
         (self.top, self.left)
     }
 
-    pub fn pixel_aspect_ratio(&self) -> Rational32 {
-        Rational32::new(320, 200) / Rational32::new(4, 3)
-    }
-
-    pub fn dim(&self) -> (u32, u32) {
+    pub fn dim(&self) -> (usize, usize) {
         (self.height as _, self.width as _)
-    }
-
-    pub fn draw_column(&self, col: u32, mut target: ArrayViewMut1<u8>, scale: Rational32) {
-        for span in self.col(col) {
-            let top = (Rational32::from(span.top as i32) * scale)
-                .ceil()
-                .to_integer();
-            let bottom =
-                (Rational32::from(span.top as i32 + span.pixels.len() as i32) * scale).to_integer();
-
-            for y in top..bottom {
-                let scaled_y = Rational32::from(y) / scale;
-                let scaled_y = (scaled_y.to_integer()) as usize - span.top as usize;
-
-                target[y as usize] = span.pixels[scaled_y];
-            }
-        }
     }
 }
 
