@@ -249,3 +249,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_pair_x_separator() {
+        assert_eq!(parse_pair("10x10"), Ok((10, 10)));
+    }
+
+    #[test]
+    fn parse_pair_comma_separator() {
+        assert_eq!(parse_pair("10,10"), Ok((10, 10)));
+    }
+
+    #[test]
+    fn parse_pair_error_on_extra_separators() {
+        assert!(parse_pair::<i32>("10x10x10").is_err());
+    }
+
+    #[test]
+    fn parse_pair_u32() {
+        assert_eq!(parse_pair("10,10"), Ok((10u32, 10u32)));
+    }
+
+    #[test]
+    fn parse_pair_i16() {
+        assert_eq!(parse_pair("10,10"), Ok((10i16, 10i16)));
+    }
+
+    #[test]
+    fn parse_pair_result_as_y_x() {
+        assert_eq!(parse_pair("320x200"), Ok((200, 320)));
+    }
+}
