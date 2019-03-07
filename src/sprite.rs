@@ -1,6 +1,4 @@
 use byteorder::{ByteOrder, LittleEndian};
-use ndarray::prelude::*;
-use num_rational::Rational32;
 
 #[derive(Debug)]
 pub struct Span<'a> {
@@ -125,18 +123,7 @@ mod test {
     fn all_columns_can_be_iterated() {
         let sprite = Sprite::new(include_bytes!("trooa1.sprite"));
         for i in 0..sprite.dim().1 {
-            sprite.col(i).for_each(|_| ());
-        }
-    }
-
-    #[test]
-    fn can_draw() {
-        let sprite = Sprite::new(include_bytes!("trooa1.sprite"));
-        let scale = sprite.pixel_aspect_ratio() * Rational32::from(4);
-        let mut target: Array1<u8> =
-            Array1::zeros((Rational32::from(sprite.dim().0 as i32) * scale).to_integer() as usize);
-        for i in 0..sprite.dim().1 {
-            sprite.draw_column(i, target.view_mut(), scale);
+            sprite.col(i as u32).for_each(|_| ());
         }
     }
 }
