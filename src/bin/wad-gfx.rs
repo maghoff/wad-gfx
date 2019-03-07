@@ -8,7 +8,7 @@ use structopt::StructOpt;
 use wad::EntryId;
 use wad_gfx::*;
 
-fn parse_dim(src: &str) -> Result<(u32, u32), &'static str> {
+fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
     const FORMAT_ERROR: &str =
         "format must be two integers separated by `x` or `,`, eg 320x200 or 100,200";
 
@@ -34,12 +34,12 @@ enum Graphics {
     #[structopt(name = "sprite")]
     Sprite {
         /// Canvas size for the output
-        #[structopt(long = "canvas", parse(try_from_str = "parse_dim"))]
+        #[structopt(long = "canvas", parse(try_from_str = "parse_pair"))]
         canvas_size: Option<(u32, u32)>,
 
         /// Place the sprite's hotspot at these coordinates
-        #[structopt(long = "pos", parse(try_from_str = "parse_dim"))]
-        pos: Option<(u32, u32)>,
+        #[structopt(long = "pos", parse(try_from_str = "parse_pair"))]
+        pos: Option<(i32, i32)>,
 
         /// Print information about the sprite to stdout instead of
         /// generating an output image
@@ -147,8 +147,8 @@ fn sprite_cmd(
     colormap: &[u8],
     gfx: &[u8],
     info: bool,
-    _canvas_size: Option<(u32, u32)>,
-    _pos: Option<(u32, u32)>,
+    canvas_size: Option<(u32, u32)>,
+    pos: Option<(i32, i32)>,
     scale: usize,
     output: impl AsRef<Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -168,12 +168,22 @@ fn sprite_cmd(
 
     let pixel_aspect_ratio = Rational32::new(320, 200) / Rational32::new(4, 3);
 
-    let mut target: Array2<u8> = Array2::zeros(sprite.dim());
+    let canvas_size = canvas_size
+        .map(|(y, x)| (y as usize, x as usize))
+        .unwrap_or(sprite.dim());
+
+    let (o_y, o_x) = sprite.origin();
+    let pos = pos.unwrap_or((o_y as _, o_x as _));
+
+    let mut target: Array2<u8> = Array2::zeros(canvas_size);
 
     for x in 0..sprite.dim().1 {
         for span in sprite.col(x as _) {
             for y in 0..span.pixels.len() {
-                target[[y as usize + span.top as usize, x as usize]] = span.pixels[y as usize];
+                target[[
+                    y as usize + span.top as usize + pos.0 as usize - o_y as usize,
+                    x as usize + pos.1 as usize - o_x as usize,
+                ]] = span.pixels[y as usize];
             }
         }
     }
