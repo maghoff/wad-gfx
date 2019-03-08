@@ -33,11 +33,13 @@ enum Graphics {
     /// Extract a sprite
     #[structopt(name = "sprite")]
     Sprite {
-        /// Canvas size for the output
+        /// Canvas size for the output. Defaults to the size of the sprite.
+        /// See the output from --info.
         #[structopt(long = "canvas", parse(try_from_str = "parse_pair"))]
         canvas_size: Option<(u32, u32)>,
 
-        /// Place the sprite's hotspot at these coordinates
+        /// Place the sprite's hotspot at these coordinates. Defaults to the
+        /// coordinates of the hotspot. See the output from --info.
         #[structopt(long = "pos", parse(try_from_str = "parse_pair"))]
         pos: Option<(i32, i32)>,
 
@@ -142,6 +144,16 @@ fn flat_cmd(
     Ok(())
 }
 
+fn add(r: &std::ops::Range<i32>, d: i32) -> std::ops::Range<i32> {
+    (r.start + d)..(r.end + d)
+}
+
+fn intersect(a: &std::ops::Range<i32>, b: &std::ops::Range<i32>) -> std::ops::Range<i32> {
+    use std::cmp::{max, min};
+
+    max(a.start, b.start)..min(a.end, b.end)
+}
+
 fn sprite_cmd(
     palette: &[u8],
     colormap: &[u8],
@@ -173,17 +185,29 @@ fn sprite_cmd(
         .unwrap_or(sprite.dim());
 
     let (o_y, o_x) = sprite.origin();
+    let (o_y, o_x) = (o_y as i32, o_x as i32);
     let pos = pos.unwrap_or((o_y as _, o_x as _));
 
     let mut target: Array2<u8> = Array2::zeros(canvas_size);
 
-    for x in 0..sprite.dim().1 {
-        for span in sprite.col(x as _) {
-            for y in 0..span.pixels.len() {
-                target[[
-                    y as usize + span.top as usize + pos.0 as usize - o_y as usize,
-                    x as usize + pos.1 as usize - o_x as usize,
-                ]] = span.pixels[y as usize];
+    // Sprite dimensions
+    let x_range = 0..sprite.dim().1 as i32;
+
+    // Position around hotspot and user specified position
+    let x_offset = pos.1 - o_x;
+    let x_range = add(&x_range, x_offset);
+
+    // Clip to target dimensions
+    let x_range = intersect(&x_range, &(0..target.dim().1 as i32));
+
+    for x in x_range {
+        for span in sprite.col((x - x_offset) as _) {
+            let span_range = 0..span.pixels.len() as i32;
+            let y_offset = span.top as i32 + pos.0 - o_y;
+            let span_range = add(&span_range, y_offset);
+            let span_range = intersect(&span_range, &(0..target.dim().0 as i32));
+            for y in span_range {
+                target[[y as usize, x as usize]] = span.pixels[(y - y_offset) as usize];
             }
         }
     }
