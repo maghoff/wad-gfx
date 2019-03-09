@@ -154,6 +154,33 @@ fn intersect(a: &std::ops::Range<i32>, b: &std::ops::Range<i32>) -> std::ops::Ra
     max(a.start, b.start)..min(a.end, b.end)
 }
 
+fn draw_sprite(mut target: ArrayViewMut2<u8>, sprite: &Sprite, pos: (i32, i32)) {
+    let (o_y, o_x) = sprite.origin();
+    let (o_y, o_x) = (o_y as i32, o_x as i32);
+
+    // Sprite dimensions
+    let x_range = 0..sprite.dim().1 as i32;
+
+    // Position sprite origin at user specified position
+    let x_offset = pos.1 - o_x;
+    let x_range = add(&x_range, x_offset);
+
+    // Clip to target dimensions
+    let x_range = intersect(&x_range, &(0..target.dim().1 as i32));
+
+    for x in x_range {
+        for span in sprite.col((x - x_offset) as _) {
+            let span_range = 0..span.pixels.len() as i32;
+            let y_offset = span.top as i32 + pos.0 - o_y;
+            let span_range = add(&span_range, y_offset);
+            let span_range = intersect(&span_range, &(0..target.dim().0 as i32));
+            for y in span_range {
+                target[[y as usize, x as usize]] = span.pixels[(y - y_offset) as usize];
+            }
+        }
+    }
+}
+
 fn sprite_cmd(
     palette: &[u8],
     colormap: &[u8],
@@ -184,33 +211,14 @@ fn sprite_cmd(
         .map(|(y, x)| (y as usize, x as usize))
         .unwrap_or(sprite.dim());
 
-    let (o_y, o_x) = sprite.origin();
-    let (o_y, o_x) = (o_y as i32, o_x as i32);
-    let pos = pos.unwrap_or((o_y as _, o_x as _));
-
     let mut target: Array2<u8> = Array2::zeros(canvas_size);
 
-    // Sprite dimensions
-    let x_range = 0..sprite.dim().1 as i32;
+    let pos = pos.unwrap_or_else(|| {
+        let (y, x) = sprite.origin();
+        (y as _, x as _)
+    });
 
-    // Position around hotspot and user specified position
-    let x_offset = pos.1 - o_x;
-    let x_range = add(&x_range, x_offset);
-
-    // Clip to target dimensions
-    let x_range = intersect(&x_range, &(0..target.dim().1 as i32));
-
-    for x in x_range {
-        for span in sprite.col((x - x_offset) as _) {
-            let span_range = 0..span.pixels.len() as i32;
-            let y_offset = span.top as i32 + pos.0 - o_y;
-            let span_range = add(&span_range, y_offset);
-            let span_range = intersect(&span_range, &(0..target.dim().0 as i32));
-            for y in span_range {
-                target[[y as usize, x as usize]] = span.pixels[(y - y_offset) as usize];
-            }
-        }
-    }
+    draw_sprite(target.view_mut(), &sprite, pos);
 
     // When painting sprites with transparency, the way to do it might be
     // to paint in 32 bit RGBA color space.  In that case, colormapping
