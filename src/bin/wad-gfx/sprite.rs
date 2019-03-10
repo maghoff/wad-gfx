@@ -4,17 +4,8 @@ use ndarray::prelude::*;
 use num_rational::Rational32;
 use wad_gfx::Sprite;
 
-use super::{do_scale, write_png};
-
-fn add(r: &std::ops::Range<i32>, d: i32) -> std::ops::Range<i32> {
-    (r.start + d)..(r.end + d)
-}
-
-fn intersect(a: &std::ops::Range<i32>, b: &std::ops::Range<i32>) -> std::ops::Range<i32> {
-    use std::cmp::{max, min};
-
-    max(a.start, b.start)..min(a.end, b.end)
-}
+use crate::rangetools::{add, intersect};
+use crate::{do_scale, write_png};
 
 fn draw_sprite(mut target: ArrayViewMut2<u8>, sprite: &Sprite, pos: (i32, i32)) {
     let (o_y, o_x) = sprite.origin();
