@@ -7,7 +7,12 @@ use wad_gfx::Sprite;
 use crate::rangetools::{add, intersect};
 use crate::{do_scale, write_png};
 
-fn draw_sprite(mut target: ArrayViewMut2<u8>, sprite: &Sprite, pos: (i32, i32)) {
+fn draw_sprite<Px>(
+    mut target: ArrayViewMut2<Px>,
+    sprite: &Sprite,
+    pos: (i32, i32),
+    pixel_mapper: impl Fn(u8) -> Px,
+) {
     let (o_y, o_x) = sprite.origin();
     let origin = (o_y as i32, o_x as i32);
 
@@ -27,7 +32,8 @@ fn draw_sprite(mut target: ArrayViewMut2<u8>, sprite: &Sprite, pos: (i32, i32)) 
             let span_range = intersect(span_range, 0..target.dim().0 as i32);
 
             for y in span_range {
-                target[[y as usize, x as usize]] = span.pixels[(y - y_offset) as usize];
+                target[[y as usize, x as usize]] =
+                    pixel_mapper(span.pixels[(y - y_offset) as usize]);
             }
         }
     }
@@ -70,13 +76,7 @@ pub fn sprite_cmd(
         (y as _, x as _)
     });
 
-    draw_sprite(target.view_mut(), &sprite, pos);
-
-    // When painting sprites with transparency, the way to do it might be
-    // to paint in 32 bit RGBA color space.  In that case, colormapping
-    // must come earlier. Maybe paint_gfx could take some painter parameter
-    // which could transparently apply a colormap?
-    target.iter_mut().for_each(|x| *x = colormap[*x as usize]);
+    draw_sprite(target.view_mut(), &sprite, pos, |x| colormap[x as usize]);
 
     let scaled = do_scale(
         target.view(),
