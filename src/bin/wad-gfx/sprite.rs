@@ -9,24 +9,23 @@ use crate::{do_scale, write_png};
 
 fn draw_sprite(mut target: ArrayViewMut2<u8>, sprite: &Sprite, pos: (i32, i32)) {
     let (o_y, o_x) = sprite.origin();
-    let (o_y, o_x) = (o_y as i32, o_x as i32);
+    let origin = (o_y as i32, o_x as i32);
 
-    // Sprite dimensions
-    let x_range = 0..sprite.dim().1 as i32;
+    // Position sprite origin at given coordinates
+    let offset = (pos.0 - origin.0, pos.1 - origin.1);
 
-    // Position sprite origin at user specified position
-    let x_offset = pos.1 - o_x;
-    let x_range = add(&x_range, x_offset);
-
-    // Clip to target dimensions
-    let x_range = intersect(&x_range, &(0..target.dim().1 as i32));
+    let x_range = 0..sprite.dim().1 as i32; // Sprite dimension
+    let x_range = add(x_range, offset.1); // Position on canvas
+    let x_range = intersect(x_range, 0..target.dim().1 as i32); // Clip to canvas
 
     for x in x_range {
-        for span in sprite.col((x - x_offset) as _) {
+        for span in sprite.col((x - offset.1) as _) {
+            let y_offset = offset.0 + span.top as i32;
+
             let span_range = 0..span.pixels.len() as i32;
-            let y_offset = span.top as i32 + pos.0 - o_y;
-            let span_range = add(&span_range, y_offset);
-            let span_range = intersect(&span_range, &(0..target.dim().0 as i32));
+            let span_range = add(span_range, y_offset);
+            let span_range = intersect(span_range, 0..target.dim().0 as i32);
+
             for y in span_range {
                 target[[y as usize, x as usize]] = span.pixels[(y - y_offset) as usize];
             }

@@ -4,10 +4,10 @@
 use std::cmp::{max, min};
 use std::ops::Range;
 
-pub fn add(r: &Range<i32>, d: i32) -> Range<i32> {
+pub fn add(r: Range<i32>, d: i32) -> Range<i32> {
     (r.start + d)..(r.end + d)
 }
 
-pub fn intersect(a: &Range<i32>, b: &Range<i32>) -> Range<i32> {
+pub fn intersect(a: Range<i32>, b: Range<i32>) -> Range<i32> {
     max(a.start, b.start)..min(a.end, b.end)
 }
