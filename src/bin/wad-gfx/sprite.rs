@@ -5,7 +5,7 @@ use num_rational::Rational32;
 use wad_gfx::Sprite;
 
 use crate::rangetools::{add, intersect};
-use crate::{do_scale, write_png};
+use crate::{do_scale, write_png, write_png_32, Format};
 
 fn draw_sprite<Px>(
     mut target: ArrayViewMut2<Px>,
@@ -46,9 +46,12 @@ pub fn sprite_cmd(
     info: bool,
     canvas_size: Option<(u32, u32)>,
     pos: Option<(i32, i32)>,
+    format: Format,
     scale: usize,
     output: impl AsRef<Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    assert_eq!(palette.len(), 768);
+
     let sprite = Sprite::new(gfx);
 
     if info {
@@ -69,27 +72,51 @@ pub fn sprite_cmd(
         .map(|(y, x)| (y as usize, x as usize))
         .unwrap_or(sprite.dim());
 
-    let mut target: Array2<u8> = Array2::zeros(canvas_size);
-
     let pos = pos.unwrap_or_else(|| {
         let (y, x) = sprite.origin();
         (y as _, x as _)
     });
-
-    draw_sprite(target.view_mut(), &sprite, pos, |x| colormap[x as usize]);
-
-    let scaled = do_scale(
-        target.view(),
-        scale as u32,
-        Rational32::from(scale as i32) * pixel_aspect_ratio,
-    );
 
     // PNG can store the pixel aspect ratio in the pHYs chunk. So, I can
     // envision two modes: correcting the pixel aspect ratio by scaling
     // during rendering or storing anamorphic pixels, but specifying the
     // correct pixel aspect ratio in the PNG. I don't know of any software
     // that supports this, but Adobe Photoshop might.
-    write_png(output, palette, scaled.view())?;
 
-    Ok(())
+    match format {
+        Format::Indexed => {
+            let mut target: Array2<u8> = Array2::zeros(canvas_size);
+
+            draw_sprite(target.view_mut(), &sprite, pos, |x| colormap[x as usize]);
+
+            let scaled = do_scale(
+                target.view(),
+                scale as u32,
+                Rational32::from(scale as i32) * pixel_aspect_ratio,
+            );
+
+            write_png(output, palette, scaled.view())?;
+
+            Ok(())
+        }
+        Format::Rgba => {
+            let mut target: Array2<[u8; 4]> = Array2::default(canvas_size);
+
+            draw_sprite(target.view_mut(), &sprite, pos, |x| {
+                let i = colormap[x as usize] as usize;
+                let c = &palette[i * 3..i * 3 + 3];
+                [c[0], c[1], c[2], 255]
+            });
+
+            let scaled = do_scale(
+                target.view(),
+                scale as u32,
+                Rational32::from(scale as i32) * pixel_aspect_ratio,
+            );
+
+            write_png_32(output, scaled.view())?;
+
+            Ok(())
+        }
+    }
 }

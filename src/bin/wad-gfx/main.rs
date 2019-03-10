@@ -1,10 +1,11 @@
 extern crate wad_gfx;
 
 mod flat;
-mod sprite;
 mod rangetools;
+mod sprite;
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use ndarray::prelude::*;
 use num_rational::Rational32;
@@ -25,6 +26,24 @@ fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
     let y = split.next().unwrap_or(Err(FORMAT_ERROR))?;
 
     Ok((y, x))
+}
+
+#[derive(Debug)]
+pub enum Format {
+    Indexed,
+    Rgba,
+}
+
+impl FromStr for Format {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Format, &'static str> {
+        match s {
+            "indexed" => Ok(Format::Indexed),
+            "rgba" => Ok(Format::Rgba),
+            _ => Err("format must be 'indexed' or 'rgba'"),
+        }
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -50,6 +69,10 @@ enum Graphics {
         /// generating an output image
         #[structopt(short = "I", long = "info")]
         info: bool,
+
+        /// Output format: indexed or rgba
+        #[structopt(short = "f", long = "format", default_value = "indexed")]
+        format: Format,
     },
 }
 
@@ -106,8 +129,36 @@ fn write_png(
     Ok(())
 }
 
-fn do_scale(input: ArrayView2<u8>, sx: u32, sy: Rational32) -> Array2<u8> {
-    let mut target: Array2<u8> = Array2::zeros((
+fn write_png_32(
+    filename: impl AsRef<Path>,
+    gfx: ArrayView2<[u8; 4]>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use png::HasParameters;
+    use std::fs::File;
+    use std::io::BufWriter;
+
+    assert!(gfx.dim().0 <= i32::max_value() as usize);
+    assert!(gfx.dim().1 <= i32::max_value() as usize);
+    assert_eq!(gfx.stride_of(Axis(1)), 1);
+    assert_eq!(gfx.stride_of(Axis(0)), gfx.dim().1 as isize);
+
+    let file = File::create(filename)?;
+    let ref mut w = BufWriter::new(file);
+
+    let mut encoder = png::Encoder::new(w, gfx.dim().1 as u32, gfx.dim().0 as u32);
+    encoder.set(png::ColorType::RGBA);
+    encoder.set(png::Compression::Best);
+    let mut writer = encoder.write_header()?;
+    let raw_data = gfx.into_slice().unwrap();
+    writer.write_image_data(unsafe {
+        std::slice::from_raw_parts(raw_data.as_ptr() as *const u8, raw_data.len() * 4)
+    })?;
+
+    Ok(())
+}
+
+fn do_scale<Px: Default + Copy>(input: ArrayView2<Px>, sx: u32, sy: Rational32) -> Array2<Px> {
+    let mut target: Array2<Px> = Array2::default((
         (Rational32::from(input.dim().0 as i32) * sy).to_integer() as usize,
         (input.dim().1 as u32 * sx) as usize,
     ));
@@ -150,6 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             canvas_size,
             pos,
             info,
+            format,
         } => sprite::sprite_cmd(
             palette,
             colormap,
@@ -157,6 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info,
             canvas_size,
             pos,
+            format,
             opt.scale,
             output,
         ),
