@@ -1,11 +1,69 @@
 use std::path::Path;
+use std::str::FromStr;
 
 use ndarray::prelude::*;
 use num_rational::Rational32;
+use structopt::StructOpt;
 use wad_gfx::Sprite;
 
 use crate::rangetools::{add, intersect};
-use crate::{do_scale, write_png, write_png_32, Format};
+use crate::{do_scale, write_png, write_png_32};
+
+fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
+    const FORMAT_ERROR: &str =
+        "format must be two integers separated by `x` or `,`, eg 320x200 or 100,200";
+
+    let mut split = src
+        .splitn(2, |x| x == 'x' || x == ',')
+        .map(|x| x.parse().map_err(|_| FORMAT_ERROR));
+
+    let x = split
+        .next()
+        .expect("splitn() yields at least one element")?;
+    let y = split.next().unwrap_or(Err(FORMAT_ERROR))?;
+
+    Ok((y, x))
+}
+
+#[derive(Debug)]
+pub enum Format {
+    Indexed,
+    Rgba,
+}
+
+impl FromStr for Format {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Format, &'static str> {
+        match s {
+            "indexed" => Ok(Format::Indexed),
+            "rgba" => Ok(Format::Rgba),
+            _ => Err("format must be 'indexed' or 'rgba'"),
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+pub struct SpriteOpt {
+    /// Canvas size for the output. Defaults to the size of the sprite.
+    /// See the output from --info.
+    #[structopt(long = "canvas", parse(try_from_str = "parse_pair"))]
+    canvas_size: Option<(u32, u32)>,
+
+    /// Place the sprite's hotspot at these coordinates. Defaults to the
+    /// coordinates of the hotspot. See the output from --info.
+    #[structopt(long = "pos", parse(try_from_str = "parse_pair"))]
+    pos: Option<(i32, i32)>,
+
+    /// Print information about the sprite to stdout instead of
+    /// generating an output image
+    #[structopt(short = "I", long = "info")]
+    info: bool,
+
+    /// Output format: indexed or rgba
+    #[structopt(short = "f", long = "format", default_value = "indexed")]
+    format: Format,
+}
 
 fn draw_sprite<Px>(
     mut target: ArrayViewMut2<Px>,
@@ -43,12 +101,14 @@ pub fn sprite_cmd(
     palette: &[u8],
     colormap: &[u8],
     gfx: &[u8],
-    info: bool,
-    canvas_size: Option<(u32, u32)>,
-    pos: Option<(i32, i32)>,
-    format: Format,
     scale: usize,
     output: impl AsRef<Path>,
+    SpriteOpt {
+        canvas_size,
+        pos,
+        info,
+        format,
+    }: SpriteOpt,
 ) -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(palette.len(), 768);
 
@@ -118,5 +178,40 @@ pub fn sprite_cmd(
 
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_pair_x_separator() {
+        assert_eq!(parse_pair("10x10"), Ok((10, 10)));
+    }
+
+    #[test]
+    fn parse_pair_comma_separator() {
+        assert_eq!(parse_pair("10,10"), Ok((10, 10)));
+    }
+
+    #[test]
+    fn parse_pair_error_on_extra_separators() {
+        assert!(parse_pair::<i32>("10x10x10").is_err());
+    }
+
+    #[test]
+    fn parse_pair_u32() {
+        assert_eq!(parse_pair("10,10"), Ok((10u32, 10u32)));
+    }
+
+    #[test]
+    fn parse_pair_i16() {
+        assert_eq!(parse_pair("10,10"), Ok((10i16, 10i16)));
+    }
+
+    #[test]
+    fn parse_pair_result_as_y_x() {
+        assert_eq!(parse_pair("320x200"), Ok((200, 320)));
     }
 }
