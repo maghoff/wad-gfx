@@ -50,7 +50,7 @@ struct Opt {
 
 fn write_png(
     filename: impl AsRef<Path>,
-    palette: &[u8],
+    palette: Option<&[u8]>,
     gfx: ArrayView2<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use png::HasParameters;
@@ -69,7 +69,11 @@ fn write_png(
     encoder.set(png::ColorType::Indexed);
     encoder.set(png::Compression::Best);
     let mut writer = encoder.write_header()?;
-    writer.write_chunk(*b"PLTE", palette)?;
+
+    if let Some(palette) = palette {
+        writer.write_chunk(*b"PLTE", palette)?;
+    }
+
     writer.write_image_data(gfx.into_slice().unwrap())?;
 
     Ok(())
@@ -77,6 +81,7 @@ fn write_png(
 
 fn write_png_32(
     filename: impl AsRef<Path>,
+    palette: Option<&[u8]>,
     gfx: ArrayView2<[u8; 4]>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use png::HasParameters;
@@ -95,6 +100,11 @@ fn write_png_32(
     encoder.set(png::ColorType::RGBA);
     encoder.set(png::Compression::Best);
     let mut writer = encoder.write_header()?;
+
+    if let Some(palette) = palette {
+        writer.write_chunk(*b"PLTE", palette)?;
+    }
+
     let raw_data = gfx.into_slice().unwrap();
     writer.write_image_data(unsafe {
         std::slice::from_raw_parts(raw_data.as_ptr() as *const u8, raw_data.len() * 4)

@@ -155,7 +155,7 @@ pub fn sprite_cmd(
                 Rational32::from(scale as i32) * pixel_aspect_ratio,
             );
 
-            write_png(output, palette, scaled.view())?;
+            write_png(output, Some(palette), scaled.view())?;
 
             Ok(())
         }
@@ -174,7 +174,7 @@ pub fn sprite_cmd(
                 Rational32::from(scale as i32) * pixel_aspect_ratio,
             );
 
-            write_png_32(output, scaled.view())?;
+            write_png_32(output, None, scaled.view())?;
 
             Ok(())
         }
