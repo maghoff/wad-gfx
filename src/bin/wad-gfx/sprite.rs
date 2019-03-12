@@ -168,13 +168,17 @@ pub fn sprite_cmd(
             Ok(())
         }
         Format::Rgba => {
-            let mut target: Array2<[u8; 4]> = Array2::default(canvas_size);
-
-            draw_sprite(target.view_mut(), &sprite, pos, |x| {
+            let colormapper = |x| -> [u8; 4] {
                 let i = colormap[x as usize] as usize;
                 let c = &palette[i * 3..i * 3 + 3];
                 [c[0], c[1], c[2], 255]
-            });
+            };
+
+            let background = background.map(colormapper).unwrap_or_default();
+
+            let mut target: Array2<[u8; 4]> = Array2::from_elem(canvas_size, background);
+
+            draw_sprite(target.view_mut(), &sprite, pos, colormapper);
 
             let scaled = do_scale(
                 target.view(),
