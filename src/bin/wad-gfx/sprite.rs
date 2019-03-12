@@ -61,8 +61,12 @@ pub struct SpriteOpt {
     info: bool,
 
     /// Output format: indexed or rgba
-    #[structopt(short = "f", long = "format", default_value = "indexed")]
+    #[structopt(short = "f", long = "format", default_value = "rgba")]
     format: Format,
+
+    /// Color index to use for the background
+    #[structopt(short = "b", long = "background")]
+    background: Option<u8>,
 }
 
 fn draw_sprite<Px>(
@@ -108,6 +112,7 @@ pub fn sprite_cmd(
         pos,
         info,
         format,
+        background,
     }: SpriteOpt,
 ) -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(palette.len(), 768);
@@ -145,7 +150,10 @@ pub fn sprite_cmd(
 
     match format {
         Format::Indexed => {
-            let mut target: Array2<u8> = Array2::zeros(canvas_size);
+            let background =
+                background.ok_or("--background must be specified for the indexed format")?;
+
+            let mut target: Array2<u8> = Array2::from_elem(canvas_size, background);
 
             draw_sprite(target.view_mut(), &sprite, pos, |x| colormap[x as usize]);
 
