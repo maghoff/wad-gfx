@@ -48,14 +48,33 @@ struct Opt {
     scale: usize,
 }
 
+struct PhysChunk {
+    x: i32,
+    y: i32,
+    unit: u8,
+}
+
+use std::io::Write;
+
+impl PhysChunk {
+    fn serialize(&self, w: &mut impl Write) -> std::io::Result<()> {
+        use byteorder::{BigEndian, WriteBytesExt};
+        w.write_i32::<BigEndian>(self.x)?;
+        w.write_i32::<BigEndian>(self.y)?;
+        w.write_u8(self.unit)?;
+        Ok(())
+    }
+}
+
 fn write_png(
     filename: impl AsRef<Path>,
     palette: Option<&[u8]>,
+    pixel_aspect: Rational32,
     gfx: ArrayView2<u8>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use png::HasParameters;
     use std::fs::File;
-    use std::io::BufWriter;
+    use std::io::{BufWriter, Cursor};
 
     assert!(gfx.dim().0 <= i32::max_value() as usize);
     assert!(gfx.dim().1 <= i32::max_value() as usize);
@@ -71,7 +90,18 @@ fn write_png(
     let mut writer = encoder.write_header()?;
 
     if let Some(palette) = palette {
-        writer.write_chunk(*b"PLTE", palette)?;
+        writer.write_chunk(png::chunk::PLTE, palette)?;
+    }
+
+    if pixel_aspect != Rational32::from(1) {
+        let mut buf = [0u8; 9];
+        let phys_chunk = PhysChunk {
+            x: *pixel_aspect.denom(),
+            y: *pixel_aspect.numer(),
+            unit: 0,
+        };
+        phys_chunk.serialize(&mut Cursor::new(&mut buf as &mut [u8]))?;
+        writer.write_chunk(png::chunk::pHYs, &buf)?;
     }
 
     writer.write_image_data(gfx.into_slice().unwrap())?;
@@ -82,11 +112,12 @@ fn write_png(
 fn write_png_32(
     filename: impl AsRef<Path>,
     palette: Option<&[u8]>,
+    pixel_aspect: Rational32,
     gfx: ArrayView2<[u8; 4]>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use png::HasParameters;
     use std::fs::File;
-    use std::io::BufWriter;
+    use std::io::{BufWriter, Cursor};
 
     assert!(gfx.dim().0 <= i32::max_value() as usize);
     assert!(gfx.dim().1 <= i32::max_value() as usize);
@@ -102,7 +133,18 @@ fn write_png_32(
     let mut writer = encoder.write_header()?;
 
     if let Some(palette) = palette {
-        writer.write_chunk(*b"PLTE", palette)?;
+        writer.write_chunk(png::chunk::PLTE, palette)?;
+    }
+
+    if pixel_aspect != Rational32::from(1) {
+        let mut buf = [0u8; 9];
+        let phys_chunk = PhysChunk {
+            x: *pixel_aspect.denom(),
+            y: *pixel_aspect.numer(),
+            unit: 0,
+        };
+        phys_chunk.serialize(&mut Cursor::new(&mut buf as &mut [u8]))?;
+        writer.write_chunk(png::chunk::pHYs, &buf)?;
     }
 
     let raw_data = gfx.into_slice().unwrap();

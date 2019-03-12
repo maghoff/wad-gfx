@@ -69,6 +69,10 @@ pub struct SpriteOpt {
     /// Color index to use for the background
     #[structopt(short = "b", long = "background")]
     background: Option<u8>,
+
+    /// Output anamorphic (non-square) pixels, like the original assets
+    #[structopt(short = "a", long = "anamorphic")]
+    anamorphic: bool,
 }
 
 fn draw_sprite<Px>(
@@ -115,6 +119,7 @@ pub fn sprite_cmd(
         info,
         format,
         background,
+        anamorphic,
     }: SpriteOpt,
 ) -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(palette.len(), 768);
@@ -133,7 +138,17 @@ pub fn sprite_cmd(
         return Ok(());
     }
 
-    let pixel_aspect_ratio = Rational32::new(320, 200) / Rational32::new(4, 3);
+    let (scale_aspect, store_aspect) = if anamorphic {
+        (
+            Rational32::new(1, 1),
+            Rational32::new(320, 200) / Rational32::new(4, 3),
+        )
+    } else {
+        (
+            Rational32::new(320, 200) / Rational32::new(4, 3),
+            Rational32::new(1, 1),
+        )
+    };
 
     let canvas_size = canvas_size
         .map(|(y, x)| (y as usize, x as usize))
@@ -162,10 +177,10 @@ pub fn sprite_cmd(
             let scaled = do_scale(
                 target.view(),
                 scale as u32,
-                Rational32::from(scale as i32) * pixel_aspect_ratio,
+                Rational32::from(scale as i32) * scale_aspect,
             );
 
-            write_png(output, Some(palette), scaled.view())?;
+            write_png(output, Some(palette), store_aspect, scaled.view())?;
 
             Ok(())
         }
@@ -181,11 +196,11 @@ pub fn sprite_cmd(
             let scaled = do_scale(
                 target.view(),
                 scale as u32,
-                Rational32::from(scale as i32) * pixel_aspect_ratio,
+                Rational32::from(scale as i32) * scale_aspect,
             );
 
             const MASK_PALETTE: &[u8] = &[0, 0, 0, 255, 255, 255];
-            write_png(output, Some(MASK_PALETTE), scaled.view())?;
+            write_png(output, Some(MASK_PALETTE), store_aspect, scaled.view())?;
 
             Ok(())
         }
@@ -205,10 +220,10 @@ pub fn sprite_cmd(
             let scaled = do_scale(
                 target.view(),
                 scale as u32,
-                Rational32::from(scale as i32) * pixel_aspect_ratio,
+                Rational32::from(scale as i32) * scale_aspect,
             );
 
-            write_png_32(output, None, scaled.view())?;
+            write_png_32(output, None, store_aspect, scaled.view())?;
 
             Ok(())
         }

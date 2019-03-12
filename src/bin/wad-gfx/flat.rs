@@ -24,7 +24,7 @@ pub fn flat_cmd(
 
     let scaled = do_scale(flat.view(), scale as u32, Rational32::from(scale as i32));
 
-    write_png(output, Some(palette), scaled.view())?;
+    write_png(output, Some(palette), Rational32::from(1), scaled.view())?;
 
     Ok(())
 }
