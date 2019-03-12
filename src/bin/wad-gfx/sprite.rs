@@ -28,6 +28,7 @@ fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
 #[derive(Debug)]
 pub enum Format {
     Indexed,
+    Mask,
     Rgba,
 }
 
@@ -37,8 +38,9 @@ impl FromStr for Format {
     fn from_str(s: &str) -> Result<Format, &'static str> {
         match s {
             "indexed" => Ok(Format::Indexed),
+            "mask" => Ok(Format::Mask),
             "rgba" => Ok(Format::Rgba),
-            _ => Err("format must be 'indexed' or 'rgba'"),
+            _ => Err("format must be 'indexed', 'mask' or 'rgba'"),
         }
     }
 }
@@ -60,7 +62,7 @@ pub struct SpriteOpt {
     #[structopt(short = "I", long = "info")]
     info: bool,
 
-    /// Output format: indexed or rgba
+    /// Output format: indexed, mask or rgba
     #[structopt(short = "f", long = "format", default_value = "rgba")]
     format: Format,
 
@@ -164,6 +166,26 @@ pub fn sprite_cmd(
             );
 
             write_png(output, Some(palette), scaled.view())?;
+
+            Ok(())
+        }
+        Format::Mask => {
+            if background.is_some() {
+                eprintln!("warning: --background has no effect for mask format");
+            }
+
+            let mut target: Array2<u8> = Array2::zeros(canvas_size);
+
+            draw_sprite(target.view_mut(), &sprite, pos, |_| 1);
+
+            let scaled = do_scale(
+                target.view(),
+                scale as u32,
+                Rational32::from(scale as i32) * pixel_aspect_ratio,
+            );
+
+            const MASK_PALETTE: &[u8] = &[0, 0, 0, 255, 255, 255];
+            write_png(output, Some(MASK_PALETTE), scaled.view())?;
 
             Ok(())
         }
