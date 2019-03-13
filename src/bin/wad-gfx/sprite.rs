@@ -29,7 +29,7 @@ fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
 pub enum Format {
     Indexed,
     Mask,
-    Rgba,
+    Full,
 }
 
 impl FromStr for Format {
@@ -38,9 +38,12 @@ impl FromStr for Format {
     fn from_str(s: &str) -> Result<Format, &'static str> {
         match s {
             "indexed" => Ok(Format::Indexed),
+            "i" => Ok(Format::Indexed),
             "mask" => Ok(Format::Mask),
-            "rgba" => Ok(Format::Rgba),
-            _ => Err("format must be 'indexed', 'mask' or 'rgba'"),
+            "m" => Ok(Format::Mask),
+            "full" => Ok(Format::Full),
+            "f" => Ok(Format::Full),
+            _ => Err("format must be 'indexed'/'i', 'mask'/'m' or 'full'/'f'"),
         }
     }
 }
@@ -62,8 +65,11 @@ pub struct SpriteOpt {
     #[structopt(short = "I", long = "info")]
     info: bool,
 
-    /// Output format: indexed, mask or rgba
-    #[structopt(short = "f", long = "format", default_value = "rgba")]
+    /// Output format: full/f, indexed/i or mask/m. Full color uses the
+    /// alpha channel for transparency. Indexed color does not include
+    /// transparency, but can be combined with the mask for transparent
+    /// sprites.
+    #[structopt(short = "f", long = "format", default_value = "full")]
     format: Format,
 
     /// Color index to use for the background
@@ -205,7 +211,7 @@ pub fn sprite_cmd(
 
             Ok(())
         }
-        Format::Rgba => {
+        Format::Full => {
             let colormapper = |x| -> [u8; 4] {
                 let i = colormap[x as usize] as usize;
                 let c = &palette[i * 3..i * 3 + 3];
