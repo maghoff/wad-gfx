@@ -96,8 +96,8 @@ fn write_png(
     if pixel_aspect != Rational32::from(1) {
         let mut buf = [0u8; 9];
         let phys_chunk = PhysChunk {
-            x: *pixel_aspect.denom(),
-            y: *pixel_aspect.numer(),
+            x: *pixel_aspect.numer(),
+            y: *pixel_aspect.denom(),
             unit: 0,
         };
         phys_chunk.serialize(&mut Cursor::new(&mut buf as &mut [u8]))?;
@@ -139,8 +139,8 @@ fn write_png_32(
     if pixel_aspect != Rational32::from(1) {
         let mut buf = [0u8; 9];
         let phys_chunk = PhysChunk {
-            x: *pixel_aspect.denom(),
-            y: *pixel_aspect.numer(),
+            x: *pixel_aspect.numer(),
+            y: *pixel_aspect.denom(),
             unit: 0,
         };
         phys_chunk.serialize(&mut Cursor::new(&mut buf as &mut [u8]))?;

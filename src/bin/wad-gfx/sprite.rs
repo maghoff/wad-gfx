@@ -141,11 +141,11 @@ pub fn sprite_cmd(
     let (scale_aspect, store_aspect) = if anamorphic {
         (
             Rational32::new(1, 1),
-            Rational32::new(320, 200) / Rational32::new(4, 3),
+            Rational32::new(4, 3) / Rational32::new(320, 200),
         )
     } else {
         (
-            Rational32::new(320, 200) / Rational32::new(4, 3),
+            Rational32::new(4, 3) / Rational32::new(320, 200),
             Rational32::new(1, 1),
         )
     };
@@ -177,7 +177,7 @@ pub fn sprite_cmd(
             let scaled = do_scale(
                 target.view(),
                 scale as u32,
-                Rational32::from(scale as i32) * scale_aspect,
+                Rational32::from(scale as i32) / scale_aspect,
             );
 
             write_png(output, Some(palette), store_aspect, scaled.view())?;
@@ -196,7 +196,7 @@ pub fn sprite_cmd(
             let scaled = do_scale(
                 target.view(),
                 scale as u32,
-                Rational32::from(scale as i32) * scale_aspect,
+                Rational32::from(scale as i32) / scale_aspect,
             );
 
             const MASK_PALETTE: &[u8] = &[0, 0, 0, 255, 255, 255];
@@ -220,7 +220,7 @@ pub fn sprite_cmd(
             let scaled = do_scale(
                 target.view(),
                 scale as u32,
-                Rational32::from(scale as i32) * scale_aspect,
+                Rational32::from(scale as i32) / scale_aspect,
             );
 
             write_png_32(output, None, store_aspect, scaled.view())?;
