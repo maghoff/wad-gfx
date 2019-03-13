@@ -70,7 +70,8 @@ pub struct SpriteOpt {
     #[structopt(short = "b", long = "background")]
     background: Option<u8>,
 
-    /// Output anamorphic (non-square) pixels, like the original assets
+    /// Output anamorphic (non-square) pixels. Like the original assets,
+    /// the pixel aspect ratio will be 5:6.
     #[structopt(short = "a", long = "anamorphic")]
     anamorphic: bool,
 }
