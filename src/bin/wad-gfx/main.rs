@@ -32,6 +32,10 @@ struct Opt {
     /// The lump name of the graphic to extract
     name: String,
 
+    /// Output filename. If absent, will default to <name>.png
+    #[structopt(short = "o", long = "output", parse(from_os_str))]
+    output: Option<PathBuf>,
+
     #[structopt(subcommand)]
     gfx: Graphics,
 
@@ -191,7 +195,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .by_id(gfx_id)
         .ok_or_else(|| format!("Cannot find {}", opt.name))?;
 
-    let output = format!("{}.png", opt.name.to_ascii_lowercase());
+    let output = opt
+        .output
+        .clone()
+        .unwrap_or_else(|| format!("{}.png", opt.name.to_ascii_lowercase()).into());
 
     match opt.gfx {
         Graphics::Flat => flat::flat_cmd(palette, colormap, gfx, opt.scale, output),
