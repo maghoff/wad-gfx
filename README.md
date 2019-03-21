@@ -20,7 +20,7 @@ command line options. There are a few options in common as well.
 
 Common command line options
 ===========================
-    wad-gfx 0.1.3
+    wad-gfx 0.2.0
     Magnus Hovland Hoff <maghoff@gmail.com>
     Extract graphics from Doom WAD files
 
