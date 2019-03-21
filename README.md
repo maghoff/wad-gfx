@@ -11,12 +11,15 @@ command line invocation may look like this:
     wad-gfx doom.wad floor5_1 flat
 
 This invocation will make `wad-gfx` extract the lump floor5_1 as a flat (which
-it is) and save it to floor5_1.png.
+it is) and save it to floor5_1.png. Flats and sprites have many differences,
+and consequently have different command line options. There are a few options
+in common as well.
 
 ⚠ The command line interface is subject to change.
 
-Flats and sprites have many differences, and consequently have different
-command line options. There are a few options in common as well.
+You can install `wad-gfx` via the Rust toolchain:
+
+    cargo install --git https://github.com/maghoff/wad-gfx.git wad-gfx
 
 Common command line options
 ===========================
