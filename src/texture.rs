@@ -1,8 +1,7 @@
-
 use byteorder::{ByteOrder, LittleEndian};
 use std::convert::TryInto;
+
 pub struct TextureDirectory<'a> {
-    num_textures: u32,
     offsets: &'a [[u8; 4]],
     data: &'a [u8],
 }
@@ -27,15 +26,11 @@ impl<'a> TextureDirectory<'a> {
             )
         };
 
-        TextureDirectory {
-            num_textures,
-            offsets,
-            data,
-        }
+        TextureDirectory { offsets, data }
     }
 
     pub fn len(&self) -> u32 {
-        self.num_textures
+        self.offsets.len() as u32
     }
 
     pub fn texture(&self, index: u32) -> Texture<'a> {
@@ -117,6 +112,28 @@ impl Patch {
     }
 }
 
+pub fn parse_pnames(data: &[u8]) -> &[[u8; 8]] {
+    let num_patches = LittleEndian::read_u32(&data[0..4]);
+    assert!(num_patches & 0x80000000 == 0);
+
+    let name_array_start = 4;
+    let name_array_byte_size = num_patches as usize * 8;
+    let name_array_end = name_array_start + name_array_byte_size;
+    assert!(data.len() >= name_array_end);
+
+    // The following unsafe block is safe because:
+    //  * [u8; n] does not have alignment constraints
+    //  * The slice has been verified to be large enough
+    let names: &[[u8; 8]] = unsafe {
+        std::slice::from_raw_parts(
+            data[name_array_start..].as_ptr() as *const _,
+            num_patches as usize,
+        )
+    };
+
+    names
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -147,5 +164,13 @@ mod test {
                 let _ = texture.patch(p as u16);
             }
         }
+    }
+
+    #[test]
+    fn parse_pnames_successful() {
+        let pnames = parse_pnames(include_bytes!("pnames.pnames"));
+
+        assert_eq!(&pnames[0], b"WALL00_3");
+        assert_eq!(pnames.last(), Some(b"SW2_4\0\0\0"));
     }
 }
