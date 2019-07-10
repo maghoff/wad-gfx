@@ -99,11 +99,21 @@ impl<'a> Texture<'a> {
     }
 }
 
-pub struct Patch {}
+pub struct Patch {
+    pub origin_x: u16,
+    pub origin_y: u16,
+    pub patch_id: u16,
+    // step_dir: u16,
+    // colormap: u16,
+}
 
 impl Patch {
-    pub fn new(_data: [u8; 10]) -> Patch {
-        Patch {}
+    pub fn new(data: [u8; 10]) -> Patch {
+        Patch {
+            origin_x: LittleEndian::read_u16(&data[0..2]),
+            origin_y: LittleEndian::read_u16(&data[2..4]),
+            patch_id: LittleEndian::read_u16(&data[4..6]),
+        }
     }
 }
 
