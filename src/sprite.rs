@@ -61,7 +61,7 @@ impl<'a> Sprite<'a> {
         let column_array_end = column_array_start + column_array_byte_size;
         assert!(data.len() >= column_array_end);
 
-        // The following transmute is safe because:
+        // The following unsafe block is safe because:
         //  * [u8; 4] does not have alignment constraints
         //  * The slice has been verified to be large enough
         let column_array: &[[u8; 4]] = unsafe {

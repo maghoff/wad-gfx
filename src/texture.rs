@@ -17,8 +17,8 @@ impl<'a> TextureDirectory<'a> {
         let offset_array_end = offset_array_start + offset_array_byte_size;
         assert!(data.len() >= offset_array_end);
 
-        // The following transmute is safe because:
-        //  * [u8; 4] does not have alignment constraints
+        // The following unsafe block is safe because:
+        //  * [u8; n] does not have alignment constraints
         //  * The slice has been verified to be large enough
         let offsets: &[[u8; 4]] = unsafe {
             std::slice::from_raw_parts(
@@ -72,8 +72,8 @@ impl<'a> Texture<'a> {
         let patch_data_end = patch_data_start + patch_data_byte_size;
         assert!(data.len() >= patch_data_end);
 
-        // The following transmute is safe because:
-        //  * [u8; 4] does not have alignment constraints
+        // The following unsafe block is safe because:
+        //  * [u8; n] does not have alignment constraints
         //  * The slice has been verified to be large enough
         let patch_data: &[[u8; 10]] = unsafe {
             std::slice::from_raw_parts(
