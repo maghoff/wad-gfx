@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::str::FromStr;
 
 use ndarray::prelude::*;
 use num_rational::Rational32;
@@ -8,6 +7,7 @@ use wad_gfx::Sprite;
 
 use crate::rangetools::{add, intersect};
 use crate::{do_scale, write_png, write_png_32};
+use crate::format::Format;
 
 fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
     const FORMAT_ERROR: &str =
@@ -25,61 +25,38 @@ fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
     Ok((y, x))
 }
 
-#[derive(Debug)]
-pub enum Format {
-    Indexed,
-    Mask,
-    Full,
-}
-
-impl FromStr for Format {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Format, &'static str> {
-        match s {
-            "indexed" => Ok(Format::Indexed),
-            "i" => Ok(Format::Indexed),
-            "mask" => Ok(Format::Mask),
-            "m" => Ok(Format::Mask),
-            "full" => Ok(Format::Full),
-            "f" => Ok(Format::Full),
-            _ => Err("format must be 'indexed'/'i', 'mask'/'m' or 'full'/'f'"),
-        }
-    }
-}
-
 #[derive(Debug, StructOpt)]
 pub struct SpriteOpt {
     /// Canvas size for the output. Defaults to the size of the sprite.
     /// See the output from --info.
     #[structopt(long = "canvas", parse(try_from_str = "parse_pair"))]
-    canvas_size: Option<(u32, u32)>,
+    pub canvas_size: Option<(u32, u32)>,
 
     /// Place the sprite's hotspot at these coordinates. Defaults to the
     /// coordinates of the hotspot. See the output from --info.
     #[structopt(long = "pos", parse(try_from_str = "parse_pair"))]
-    pos: Option<(i32, i32)>,
+    pub pos: Option<(i32, i32)>,
 
     /// Print information about the sprite to stdout instead of
     /// generating an output image
     #[structopt(short = "I", long = "info")]
-    info: bool,
+    pub info: bool,
 
     /// Output format: full/f, indexed/i or mask/m. Full color uses the
     /// alpha channel for transparency. Indexed color does not include
     /// transparency, but can be combined with the mask for transparent
     /// sprites.
     #[structopt(short = "f", long = "format", default_value = "full")]
-    format: Format,
+    pub format: Format,
 
     /// Color index to use for the background
     #[structopt(short = "b", long = "background")]
-    background: Option<u8>,
+    pub background: Option<u8>,
 
     /// Output anamorphic (non-square) pixels. Like the original assets,
     /// the pixel aspect ratio will be 5:6.
     #[structopt(short = "a", long = "anamorphic")]
-    anamorphic: bool,
+    pub anamorphic: bool,
 }
 
 fn draw_sprite<Px>(

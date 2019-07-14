@@ -85,6 +85,18 @@ impl<'a> Texture<'a> {
         }
     }
 
+    pub fn name(&self) -> [u8; 8] {
+        self.name
+    }
+
+    pub fn width(&self) -> u16 {
+        self.width
+    }
+
+    pub fn height(&self) -> u16 {
+        self.height
+    }
+
     pub fn len(&self) -> u16 {
         self.patch_data.len() as u16
     }
@@ -95,8 +107,8 @@ impl<'a> Texture<'a> {
 }
 
 pub struct Patch {
-    pub origin_x: u16,
-    pub origin_y: u16,
+    pub origin_x: i16,
+    pub origin_y: i16,
     pub patch_id: u16,
     // step_dir: u16,
     // colormap: u16,
@@ -110,8 +122,8 @@ impl Patch {
         debug_assert_eq!(colormap, 0);
 
         Patch {
-            origin_x: LittleEndian::read_u16(&data[0..2]),
-            origin_y: LittleEndian::read_u16(&data[2..4]),
+            origin_x: LittleEndian::read_i16(&data[0..2]),
+            origin_y: LittleEndian::read_i16(&data[2..4]),
             patch_id: LittleEndian::read_u16(&data[4..6]),
         }
     }
@@ -137,6 +149,48 @@ pub fn parse_pnames(data: &[u8]) -> &[[u8; 8]] {
     };
 
     names
+}
+
+use super::{Sprite, SpriteCanvas};
+
+pub trait PatchProvider<'a> {
+    fn patch(&self, id: u16) -> Option<Sprite<'a>>;
+}
+
+pub struct LazyPatchProvider<'a> {
+    wad: wad::WadSlice<'a>,
+    pnames: &'a [[u8; 8]],
+}
+
+impl<'a> LazyPatchProvider<'a> {
+    pub fn new(wad: wad::WadSlice<'a>, pnames: &'a [[u8; 8]]) -> LazyPatchProvider<'a> {
+        LazyPatchProvider { wad, pnames }
+    }
+}
+
+impl<'a> PatchProvider<'a> for LazyPatchProvider<'a> {
+    fn patch(&self, id: u16) -> Option<Sprite<'a>> {
+        let name = self.pnames.get(id as usize)?;
+        let sprite = self.wad.by_id(name)?;
+        Some(Sprite::new(sprite))
+    }
+}
+
+pub fn render_texture<'a>(texture: Texture, patch_provider: impl PatchProvider<'a>) -> Vec<u8> {
+    let mut canvas = SpriteCanvas::new(texture.width, texture.height);
+    for p in 0..texture.len() {
+        let patch = texture.patch(p as u16);
+        let sprite = patch_provider
+            .patch(patch.patch_id)
+            .expect("Missing patches not handled");
+        canvas.draw_patch(
+            patch.origin_x + sprite.left(),
+            patch.origin_y + sprite.top(),
+            &sprite,
+        );
+    }
+
+    canvas.make_sprite()
 }
 
 #[cfg(test)]

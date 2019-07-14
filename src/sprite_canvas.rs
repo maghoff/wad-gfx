@@ -86,7 +86,7 @@ impl SpriteCanvas {
 
             for span in find_spans(self.mask.slice(s![x as usize, ..]).as_slice().unwrap()) {
                 let span_len = span.end - span.start;
-                assert!(span_len < 128, "Span dimensions exceed what's encodeable");
+                assert!(span_len <= 128, "Span dimensions exceed what's encodeable");
                 data.push(span.start as u8);
                 data.push(span_len as u8);
                 data.push(span_len as u8);

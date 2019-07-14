@@ -1,8 +1,10 @@
-extern crate wad_gfx;
 extern crate rangetools;
+extern crate wad_gfx;
 
 mod flat;
+mod format;
 mod sprite;
+mod texture;
 
 use std::path::{Path, PathBuf};
 
@@ -20,6 +22,10 @@ enum Graphics {
     /// Extract a sprite
     #[structopt(name = "sprite")]
     Sprite(sprite::SpriteOpt),
+
+    /// Extract a texture
+    #[structopt(name = "texture")]
+    Texture(texture::TextureOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -204,6 +210,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Graphics::Flat => flat::flat_cmd(palette, colormap, gfx, opt.scale, output),
         Graphics::Sprite(opts) => {
             sprite::sprite_cmd(palette, colormap, gfx, opt.scale, output, opts)
+        }
+        Graphics::Texture(opts) => {
+            texture::texture_cmd(&wad, palette, colormap, gfx, opt.scale, output, opts)
         }
     }
 }
