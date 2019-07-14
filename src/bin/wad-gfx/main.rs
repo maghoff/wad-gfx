@@ -1,7 +1,7 @@
 extern crate wad_gfx;
+extern crate rangetools;
 
 mod flat;
-mod rangetools;
 mod sprite;
 
 use std::path::{Path, PathBuf};

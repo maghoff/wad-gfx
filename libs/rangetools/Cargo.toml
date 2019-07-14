@@ -1,0 +1,11 @@
+[package]
+name = "rangetools"
+version = "0.1.0"
+authors = ["Magnus Hoff <maghoff@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+
+[lib]
+name = "rangetools"
+path = "lib.rs"

@@ -98,8 +98,24 @@ impl<'a> Sprite<'a> {
         (self.top, self.left)
     }
 
+    pub fn left(&self) -> i16 {
+        self.left
+    }
+
+    pub fn top(&self) -> i16 {
+        self.top
+    }
+
     pub fn dim(&self) -> (usize, usize) {
         (self.height as _, self.width as _)
+    }
+
+    pub fn width(&self) -> u16 {
+        self.width
+    }
+
+    pub fn height(&self) -> u16 {
+        self.height
     }
 }
 

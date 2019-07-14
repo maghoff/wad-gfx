@@ -104,6 +104,11 @@ pub struct Patch {
 
 impl Patch {
     pub fn new(data: [u8; 10]) -> Patch {
+        let step_dir = LittleEndian::read_u16(&data[6..8]);
+        let colormap = LittleEndian::read_u16(&data[8..10]);
+        debug_assert_eq!(step_dir, 1);
+        debug_assert_eq!(colormap, 0);
+
         Patch {
             origin_x: LittleEndian::read_u16(&data[0..2]),
             origin_y: LittleEndian::read_u16(&data[2..4]),
