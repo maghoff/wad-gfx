@@ -59,6 +59,7 @@ pub struct SpriteOpt {
     pub anamorphic: bool,
 }
 
+// TODO Refactor to avoid or reduce duplication with SpriteCanvas
 fn draw_sprite<Px>(
     mut target: ArrayViewMut2<Px>,
     sprite: &Sprite,

@@ -98,10 +98,11 @@ pub fn texture_cmd(
                 return Ok(());
             }
 
-            let patch_provider = LazyPatchProvider::new(wad.slice(..), pnames);
+            let patch_provider = LazyPatchProvider::new(wad.as_slice(), pnames);
 
             let texture_sprite = render_texture(texture, patch_provider);
 
+            // TODO Refactor to avoid reusing top-level entrypoint
             sprite_cmd(
                 palette,
                 colormap,
