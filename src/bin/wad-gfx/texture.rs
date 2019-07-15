@@ -1,10 +1,10 @@
 use std::path::Path;
 use structopt::StructOpt;
 use wad::EntryId;
-use wad_gfx::{parse_pnames, render_texture, TextureDirectory, LazyPatchProvider};
+use wad_gfx::{parse_pnames, render_texture, LazyPatchProvider, TextureDirectory};
 
 use crate::format::Format;
-use crate::sprite::{SpriteOpt, sprite_cmd};
+use crate::sprite::{sprite_cmd, SpriteOpt};
 
 #[derive(Debug, StructOpt)]
 pub struct ExtractOpt {
@@ -102,14 +102,21 @@ pub fn texture_cmd(
 
             let texture_sprite = render_texture(texture, patch_provider);
 
-            sprite_cmd(palette, colormap, &texture_sprite, scale, output, SpriteOpt {
-                canvas_size: None,
-                pos: None,
-                info: false,
-                format: opt.format,
-                background: opt.background,
-                anamorphic: opt.anamorphic,
-            })
+            sprite_cmd(
+                palette,
+                colormap,
+                &texture_sprite,
+                scale,
+                output,
+                SpriteOpt {
+                    canvas_size: None,
+                    pos: None,
+                    info: false,
+                    format: opt.format,
+                    background: opt.background,
+                    anamorphic: opt.anamorphic,
+                },
+            )
         }
     }
 }
