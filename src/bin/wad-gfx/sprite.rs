@@ -5,9 +5,9 @@ use num_rational::Rational32;
 use structopt::StructOpt;
 use wad_gfx::Sprite;
 
+use crate::format::Format;
 use crate::rangetools::{add, intersect};
 use crate::{do_scale, write_png, write_png_32};
-use crate::format::Format;
 
 fn parse_pair<T: std::str::FromStr>(src: &str) -> Result<(T, T), &'static str> {
     const FORMAT_ERROR: &str =
