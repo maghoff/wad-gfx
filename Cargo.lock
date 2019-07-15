@@ -186,10 +186,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rangetools"
-version = "0.1.0"
-
-[[package]]
 name = "rawpointer"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -297,7 +293,6 @@ dependencies = [
  "ndarray 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-rational 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "png 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rangetools 0.1.0",
  "structopt 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "wad 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

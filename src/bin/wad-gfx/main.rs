@@ -1,10 +1,12 @@
-extern crate rangetools;
 extern crate wad_gfx;
 
 mod flat;
 mod format;
 mod sprite;
 mod texture;
+
+#[path = "../../rangetools.rs"]
+mod rangetools;
 
 use std::path::{Path, PathBuf};
 

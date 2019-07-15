@@ -1,9 +1,8 @@
-extern crate rangetools;
-
 mod flat;
 mod sprite;
 mod sprite_canvas;
 mod texture;
+mod rangetools;
 
 pub use flat::*;
 pub use sprite::*;

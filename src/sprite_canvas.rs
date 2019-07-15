@@ -1,8 +1,8 @@
-use super::Sprite;
+use crate::rangetools::*;
+use crate::Sprite;
 use byteorder::{LittleEndian, WriteBytesExt};
 use ndarray::prelude::*;
 use ndarray::s;
-use rangetools::*;
 use std::ops::Range;
 
 pub struct SpriteCanvas {
