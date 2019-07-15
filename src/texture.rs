@@ -1,6 +1,8 @@
 use byteorder::{ByteOrder, LittleEndian};
 use std::convert::TryInto;
 
+use super::{Sprite, SpriteCanvas};
+
 pub struct TextureDirectory<'a> {
     offsets: &'a [[u8; 4]],
     data: &'a [u8],
@@ -151,8 +153,6 @@ pub fn parse_pnames(data: &[u8]) -> &[[u8; 8]] {
     names
 }
 
-use super::{Sprite, SpriteCanvas};
-
 pub trait PatchProvider<'a> {
     fn patch(&self, id: u16) -> Option<Sprite<'a>>;
 }
@@ -231,5 +231,51 @@ mod test {
 
         assert_eq!(&pnames[0], b"WALL00_3");
         assert_eq!(pnames.last(), Some(b"SW2_4\0\0\0"));
+    }
+
+    #[test]
+    fn basic_render_texture() {
+        struct TestPatchProvider;
+
+        impl<'a> PatchProvider<'a> for TestPatchProvider {
+            fn patch(&self, _id: u16) -> Option<Sprite<'a>> {
+                Some(Sprite::new(include_bytes!("trooa1.sprite")))
+            }
+        }
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let texture = Texture::new(&[
+            b'N', b'A', b'M', b'E', 0, 0, 0, 0,
+            0, 0, 0, 0,
+            16, 0, // width
+            16, 0, // height
+            0, 0, 0, 0,
+            1, 0, // patch count
+
+            // Patch 0:
+            0, 0, // origin x
+            0, 0, // origin y
+            0, 0, // patch ID
+            1, 0, // step dir
+            0, 0, // colormap
+        ]);
+
+        let sprite_data = render_texture(texture, TestPatchProvider);
+
+        // Could change with valid implementation changes, but it is unlikely
+        let expected = [
+            16, 0, 16, 0, 0, 0, 0, 0, 72, 0, 0, 0, 73, 0, 0, 0, 74, 0, 0, 0, 75, 0, 0, 0, 81, 0, 0,
+            0, 88, 0, 0, 0, 94, 0, 0, 0, 101, 0, 0, 0, 109, 0, 0, 0, 118, 0, 0, 0, 127, 0, 0, 0,
+            137, 0, 0, 0, 147, 0, 0, 0, 157, 0, 0, 0, 168, 0, 0, 0, 179, 0, 0, 0, 255, 255, 255,
+            10, 1, 1, 96, 0, 255, 10, 2, 2, 90, 96, 0, 255, 11, 1, 1, 92, 0, 255, 11, 2, 2, 96, 93,
+            0, 255, 11, 3, 3, 99, 90, 98, 0, 255, 12, 4, 4, 81, 90, 73, 74, 0, 255, 12, 4, 4, 70,
+            72, 73, 75, 0, 255, 11, 5, 5, 70, 68, 70, 72, 74, 0, 255, 11, 5, 5, 68, 67, 68, 69, 71,
+            0, 255, 11, 5, 5, 67, 69, 67, 68, 70, 0, 255, 10, 6, 6, 68, 68, 70, 69, 69, 71, 0, 255,
+            10, 6, 6, 69, 70, 74, 72, 70, 71, 0, 255, 4, 3, 3, 71, 70, 70, 0, 9, 7, 7, 69, 70, 73,
+            76, 74, 73, 71, 0, 255,
+        ];
+
+        assert_eq!(sprite_data.len(), expected.len());
+        assert!(sprite_data.iter().zip(expected.iter()).all(|(a, b)| a == b));
     }
 }
