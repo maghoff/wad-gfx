@@ -183,7 +183,7 @@ pub struct EagerPatchProvider<'a> {
 impl<'a> EagerPatchProvider<'a> {
     pub fn new(wad: wad::WadSlice<'a>, pnames: &'a [[u8; 8]]) -> EagerPatchProvider<'a> {
         EagerPatchProvider {
-            patches: pnames.iter().map(|id| wad.by_id(id).unwrap()).collect()
+            patches: pnames.iter().map(|id| wad.by_id(id).unwrap()).collect(),
         }
     }
 }
@@ -194,7 +194,7 @@ impl<'a> PatchProvider<'a> for EagerPatchProvider<'a> {
     }
 }
 
-pub fn render_texture<'a>(texture: Texture, patch_provider: impl PatchProvider<'a>) -> Vec<u8> {
+pub fn render_texture<'a>(texture: Texture, patch_provider: &impl PatchProvider<'a>) -> Vec<u8> {
     let mut canvas = SpriteCanvas::new(texture.width, texture.height);
     for p in 0..texture.len() {
         let patch = texture.patch(p as u16);
@@ -278,7 +278,7 @@ mod test {
             0, 0, // colormap
         ]);
 
-        let sprite_data = render_texture(texture, TestPatchProvider);
+        let sprite_data = render_texture(texture, &TestPatchProvider);
 
         // Could change with valid implementation changes, but it is unlikely
         let expected = [

@@ -100,7 +100,7 @@ pub fn texture_cmd(
 
             let patch_provider = LazyPatchProvider::new(wad.as_slice(), pnames);
 
-            let texture_sprite = render_texture(texture, patch_provider);
+            let texture_sprite = render_texture(texture, &patch_provider);
 
             // TODO Refactor to avoid reusing top-level entrypoint
             sprite_cmd(
