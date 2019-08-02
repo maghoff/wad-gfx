@@ -181,7 +181,7 @@ pub struct EagerPatchProvider<'a> {
 }
 
 impl<'a> EagerPatchProvider<'a> {
-    pub fn new(wad: wad::WadSlice<'a>, pnames: &'a [[u8; 8]]) -> EagerPatchProvider<'a> {
+    pub fn new(wad: wad::WadSlice<'a>, pnames: &[[u8; 8]]) -> EagerPatchProvider<'a> {
         EagerPatchProvider {
             patches: pnames.iter().map(|id| wad.by_id(id).unwrap()).collect(),
         }
