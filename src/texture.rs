@@ -177,20 +177,20 @@ impl<'a> PatchProvider<'a> for LazyPatchProvider<'a> {
 }
 
 pub struct EagerPatchProvider<'a> {
-    patches: Vec<&'a [u8]>,
+    patches: Vec<Option<&'a [u8]>>,
 }
 
 impl<'a> EagerPatchProvider<'a> {
     pub fn new(wad: wad::WadSlice<'a>, pnames: &[[u8; 8]]) -> EagerPatchProvider<'a> {
         EagerPatchProvider {
-            patches: pnames.iter().map(|id| wad.by_id(id).unwrap()).collect(),
+            patches: pnames.iter().map(|id| wad.by_id(id)).collect(),
         }
     }
 }
 
 impl<'a> PatchProvider<'a> for EagerPatchProvider<'a> {
     fn patch(&self, id: u16) -> Option<Sprite<'a>> {
-        Some(Sprite::new(self.patches.get(id as usize)?))
+        self.patches.get(id as usize).and_then(|x| x.map(Sprite::new))
     }
 }
 
